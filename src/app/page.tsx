@@ -2,6 +2,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 const products = [
   {
@@ -9,21 +11,24 @@ const products = [
     name: "The Signature Blazer",
     category: "MENSWEAR",
     price: "₹3,499",
-    image: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=900&q=85",
+    image:
+      "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=900&q=85",
   },
   {
     id: 2,
     name: "The Evening Edit",
     category: "WOMENSWEAR",
     price: "₹2,899",
-    image: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=900&q=85",
+    image:
+      "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=900&q=85",
   },
   {
     id: 3,
     name: "The Modern Essential",
     category: "MENSWEAR",
     price: "₹1,999",
-    image: "https://images.unsplash.com/photo-1617137968427-85924c800a22?w=900&q=85",
+    image:
+      "https://images.unsplash.com/photo-1617137968427-85924c800a22?w=900&q=85",
   },
 ];
 
@@ -33,17 +38,65 @@ type CartItem = {
 };
 
 export default function Home() {
-  const [cartCount, setCartCount] = useState(0);
+  const router = useRouter();
 
+  const [cartCount, setCartCount] = useState(0);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // CHECK USER LOGIN STATUS
+  useEffect(() => {
+    let mounted = true;
+
+    const checkAuthentication = async () => {
+      const { data, error } = await supabase.auth.getSession();
+
+      if (!mounted) return;
+
+      if (error || !data.session) {
+        setIsAuthenticated(false);
+        setAuthChecked(true);
+        router.replace("/account");
+      } else {
+        setIsAuthenticated(true);
+        setAuthChecked(true);
+      }
+    };
+
+    checkAuthentication();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
+
+      if (session) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+        router.replace("/account");
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [router]);
+
+  // UPDATE CART COUNT
   useEffect(() => {
     const updateCartCount = () => {
       try {
         const savedCart = localStorage.getItem("aurence-cart");
-        const cart: CartItem[] = savedCart ? JSON.parse(savedCart) : [];
+        const cart: CartItem[] = savedCart
+          ? JSON.parse(savedCart)
+          : [];
 
         const count = Array.isArray(cart)
           ? cart.reduce(
-              (total, item) => total + (Number(item.quantity) || 0),
+              (total, item) =>
+                total + (Number(item.quantity) || 0),
               0
             )
           : 0;
@@ -63,12 +116,14 @@ export default function Home() {
     };
   }, []);
 
-  // Scroll reveal animation
+  // SCROLL REVEAL ANIMATION
   useEffect(() => {
     const elements = document.querySelectorAll(".scroll-reveal");
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      elements.forEach((element) => element.classList.add("is-visible"));
+      elements.forEach((element) =>
+        element.classList.add("is-visible")
+      );
       return;
     }
 
@@ -90,7 +145,12 @@ export default function Home() {
     elements.forEach((element) => observer.observe(element));
 
     return () => observer.disconnect();
-  }, []);
+  }, [isAuthenticated]);
+
+  // WAIT UNTIL AUTHENTICATION IS CHECKED
+  if (!authChecked || !isAuthenticated) {
+    return null;
+  }
 
   return (
     <main>
@@ -177,7 +237,10 @@ export default function Home() {
 
       {/* COLLECTIONS */}
 
-      <section className="collections scroll-reveal" id="collections">
+      <section
+        className="collections scroll-reveal"
+        id="collections"
+      >
         <div className="section-top">
           <h2>Our Collections</h2>
           <p>DESIGNED FOR INDIVIDUALITY</p>
@@ -185,21 +248,21 @@ export default function Home() {
 
         <div className="collection-grid">
           <article className="collection" id="men">
-  <img
-    src="https://images.unsplash.com/photo-1617137968427-85924c800a22?w=1200&q=90"
-    alt="AURENCE menswear collection featuring a male fashion model"
-  />
+            <img
+              src="https://images.unsplash.com/photo-1617137968427-85924c800a22?w=1200&q=90"
+              alt="AURENCE menswear collection featuring a male fashion model"
+            />
 
-  <div className="collection-shade"></div>
+            <div className="collection-shade"></div>
 
-  <div className="collection-copy">
-    <p>THE ART OF MODERN DRESSING</p>
-    <h3>Menswear</h3>
-    <a href="/shop?category=Men">
-      EXPLORE COLLECTION ↗
-    </a>
-  </div>
-</article>
+            <div className="collection-copy">
+              <p>THE ART OF MODERN DRESSING</p>
+              <h3>Menswear</h3>
+              <a href="/shop?category=Men">
+                EXPLORE COLLECTION ↗
+              </a>
+            </div>
+          </article>
 
           <article className="collection" id="women">
             <img
@@ -251,7 +314,10 @@ export default function Home() {
 
       {/* FEATURED PRODUCTS */}
 
-      <section className="products scroll-reveal" id="featured">
+      <section
+        className="products scroll-reveal"
+        id="featured"
+      >
         <div className="section-top">
           <h2>Selected Pieces</h2>
           <p>THE SIGNATURE EDIT</p>
@@ -262,18 +328,29 @@ export default function Home() {
             <article
               className="product-card scroll-reveal"
               key={product.id}
-              style={{ transitionDelay: `${index * 120}ms` }}
+              style={{
+                transitionDelay: `${index * 120}ms`,
+              }}
             >
               <div className="product-image">
                 <a href={`/shop/${product.id}`}>
-                  <img src={product.image} alt={product.name} />
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                  />
                 </a>
               </div>
 
               <div className="product-info">
-                <p className="product-category">{product.category}</p>
+                <p className="product-category">
+                  {product.category}
+                </p>
+
                 <h3>{product.name}</h3>
-                <p className="product-price">{product.price}</p>
+
+                <p className="product-price">
+                  {product.price}
+                </p>
 
                 <a href={`/shop/${product.id}`}>
                   VIEW PRODUCT →
@@ -283,7 +360,12 @@ export default function Home() {
           ))}
         </div>
 
-        <div style={{ textAlign: "center", marginTop: "45px" }}>
+        <div
+          style={{
+            textAlign: "center",
+            marginTop: "45px",
+          }}
+        >
           <a href="/shop" className="primary-link">
             VIEW ALL COLLECTIONS ↗
           </a>
